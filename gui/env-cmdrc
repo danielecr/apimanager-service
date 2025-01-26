@@ -1,0 +1,14 @@
+{
+    "development": {
+        "PUBLIC_URL": "/",
+        "API_BASE": "http://localhost:6631/",
+        "API_AUTH": "http://localhost:6631/login",
+        "BASE_REALURL": "http://example.com/"
+    },
+    "production": {
+        "PUBLIC_URL": "[[PUBLIC_URL]]",
+        "API_BASE": "[[API_BASE]]",
+        "API_AUTH": "[[API_AUTH]]",
+        "BASE_REALURL": "[[BASE_REALURL]]"
+    }
+}
