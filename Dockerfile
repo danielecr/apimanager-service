@@ -25,3 +25,16 @@ RUN git clone https://github.com/landingon-cloud/api-manager-gui.git && \
     npm run build
 
 FROM rust:1.70.0 as rust-build
+
+COPY --from=react-build /app/api-manager-gui/build /assets
+
+WORKDIR /app
+
+ADD . /app
+
+RUN ASSETS=/assets cargo build --release
+
+
+FROM scratch
+
+COPY --from=rust-build /app/target/release/apimanager-service /apimanager-service
