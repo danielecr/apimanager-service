@@ -15,3 +15,11 @@ Stages and produced code are:
 The rust build process expects ENV variable specifying the path of static files to be loaded and served in the path, i.e.:
 
 > ASSETS=/assets cargo build --release
+
+
+## TODO
+
+- serving static pages - OK
+- serving api staff - 
+- attach utility service: service-manager-service
+- accept ENV execution variable
