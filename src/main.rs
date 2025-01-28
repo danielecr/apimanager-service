@@ -3,12 +3,35 @@ use dotenv;
 
 // a service listing http on port 8080
 // using axum
-use axum::{routing::get, Router};
+use axum::{routing::get, Router, extract::{Path,State}};
 use apimanager_service::assets::static_files::{INDEX_BUNDLE_JS, INDEX_BUNDLE_JS_MAP, INDEX_HTML};
 
+#[derive(Clone)]
+struct Appstate {
+    service_manager_service: String,
+}
 
-async fn get_services_handler(service_manager_service: String) -> String {
-    let services = reqwest::get(format!("{}/api/services", service_manager_service))
+async fn get_services_handler(State(state): State<Appstate>) -> String {
+    let uri_part = "/api/services";
+    let services = reqwest::get(format!("{}{}", &state.service_manager_service, uri_part))
+        .await.unwrap()
+        .text()
+        .await.unwrap();
+    services
+}
+
+async fn get_resources_handler(State(state): State<Appstate>) -> String {
+    let uri_part = "/api/resources";
+    let services = reqwest::get(format!("{}{}", &state.service_manager_service, uri_part))
+        .await.unwrap()
+        .text()
+        .await.unwrap();
+    services
+}
+
+async fn get_servname_handler(State(state): State<Appstate>, Path(name): Path<String>) -> String {
+    let uri_part = "/api/service/";
+    let services = reqwest::get(format!("{}{}{}", &state.service_manager_service, uri_part, &name))
         .await.unwrap()
         .text()
         .await.unwrap();
@@ -20,14 +43,16 @@ async fn main() {
     let _ = dotenv::dotenv();
     let service_manager_service = env::var("SERVICE_MANAGER_SERVICE").expect("SERVICE_MANAGER_SERVICE must be set");
     //let get_services_handler = create_get_services_handler(service_manager_service);
-
+    let state = Appstate {
+        service_manager_service,
+    };
     let app = Router::new().route("/index.html", get(|| async { INDEX_HTML }))
     .route("/index.bundle.js", get(|| async { INDEX_BUNDLE_JS}))
     .route("/index.bundle.js.map", get(|| async { INDEX_BUNDLE_JS_MAP}))
-    .route("/api/services", get(move || {
-        let service_manager_service = service_manager_service.clone();
-        async move { get_services_handler(service_manager_service).await }
-    }));
+    .route("/api/services", get(get_services_handler))
+    .route("/api/service/{name}", get(get_servname_handler))
+    .route("/api/resources", get(get_resources_handler))
+    .with_state(state);
 
 
     // run it
