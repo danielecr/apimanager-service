@@ -20,6 +20,6 @@ The rust build process expects ENV variable specifying the path of static files 
 ## TODO
 
 - serving static pages - OK
-- serving api staff - 
-- attach utility service: service-manager-service
-- accept ENV execution variable
+- serving api staff - OK
+- attach utility service: service-manager-service - OK
+- accept ENV execution variable - OK
