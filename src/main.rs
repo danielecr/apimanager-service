@@ -5,6 +5,8 @@ use dotenv;
 // using axum
 use axum::{routing::get, Router, extract::{Path,State}};
 use apimanager_service::assets::static_files::{INDEX_BUNDLE_JS, INDEX_BUNDLE_JS_MAP, INDEX_HTML};
+use apimanager_service::assets::STATIC_FILEMAP;
+use reqwest::StatusCode;
 
 #[derive(Clone)]
 struct Appstate {
@@ -38,29 +40,47 @@ async fn get_servname_handler(State(state): State<Appstate>, Path(name): Path<St
     services
 }
 
+fn static_routes() -> Router {
+    let prefix = "/";
+    let mut static_pages = Router::new();
+    for (k, v) in STATIC_FILEMAP.entries() {
+        let k = format!("{}{}", prefix, k);
+        static_pages = static_pages.clone().route(&k, get(move || async { v.clone() }));
+    }
+    static_pages = static_pages.fallback(fallback);
+    static_pages
+} 
+
 #[tokio::main]
 async fn main() {
     let _ = dotenv::dotenv();
     let service_manager_service = env::var("SERVICE_MANAGER_SERVICE").expect("SERVICE_MANAGER_SERVICE must be set");
-    //let get_services_handler = create_get_services_handler(service_manager_service);
+    let static_pages = static_routes();
+ 
     let state = Appstate {
         service_manager_service,
     };
-    let app = Router::new().route("/index.html", get(|| async { INDEX_HTML }))
-    .route("/index.bundle.js", get(|| async { INDEX_BUNDLE_JS}))
-    .route("/index.bundle.js.map", get(|| async { INDEX_BUNDLE_JS_MAP}))
+
+    let app_routes = Router::new()
     .route("/api/services", get(get_services_handler))
     .route("/api/service/{name}", get(get_servname_handler))
     .route("/api/resources", get(get_resources_handler))
     .with_state(state);
-
-
+ 
+    let app = Router::new()
+    .merge(static_pages)
+    .merge(app_routes);
     // run it
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
-        .await
-        .unwrap();
+    let port: u16 = env::var("PORT").unwrap_or_else(|_| "3000".to_string()).parse().unwrap();
+
+    let addr = format!("0.0.0.0:{}", port);
+    let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
     println!("listening on {}", listener.local_addr().unwrap());
     axum::serve(listener, app).await.unwrap();
     println!("{:?}", INDEX_HTML);
     println!("Hello, world!");
+}
+
+async fn fallback() -> (StatusCode, String) {
+    (StatusCode::NOT_FOUND, format!("Cannot find "))
 }
