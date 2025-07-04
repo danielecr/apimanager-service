@@ -24,7 +24,7 @@ RUN git clone https://github.com/landingon-cloud/api-manager-gui.git && \
     npm install --legacy-peer-deps && \
     npm run build
 
-FROM rust:1.70.0 as rust-build
+FROM rust:1.88.0 as rust-build
 
 COPY --from=react-build /app/api-manager-gui/build /assets
 
