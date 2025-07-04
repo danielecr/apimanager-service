@@ -3,10 +3,10 @@ use dotenv;
 
 // a service listing http on port 8080
 // using axum
-use axum::{routing::get, Router, extract::{Path,State}};
-use apimanager_service::assets::static_files::{INDEX_BUNDLE_JS, INDEX_BUNDLE_JS_MAP, INDEX_HTML};
+use axum::{extract::{Path,State}, http::{HeaderMap, HeaderValue}, response::IntoResponse, routing::get, Router};
+use apimanager_service::assets::{static_files::{INDEX_BUNDLE_JS, INDEX_BUNDLE_JS_MAP, INDEX_HTML}, STATIC_FILEMAP_MIME};
 use apimanager_service::assets::STATIC_FILEMAP;
-use reqwest::StatusCode;
+use reqwest::{header, StatusCode};
 
 #[derive(Clone)]
 struct Appstate {
@@ -44,8 +44,14 @@ fn static_routes() -> Router {
     let prefix = "/";
     let mut static_pages = Router::new();
     for (k, v) in STATIC_FILEMAP.entries() {
+        let mime = STATIC_FILEMAP_MIME.get(k).unwrap_or(&"application/octet-stream");
         let k = format!("{}{}", prefix, k);
-        static_pages = static_pages.clone().route(&k, get(move || async { v.clone() }));
+        static_pages = static_pages.clone().route(&k,
+            get(move || async move {
+            let mut headers = HeaderMap::new();
+            headers.insert(header::CONTENT_TYPE, HeaderValue::from_static(*mime));
+            (headers, *v).into_response()
+        }));
     }
     static_pages = static_pages.fallback(fallback);
     static_pages
