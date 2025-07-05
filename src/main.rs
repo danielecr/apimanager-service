@@ -1,12 +1,11 @@
 use std::env;
 use dotenv;
 
-// a service listing http on port 8080
+// a service listening http on port 8080
 // using axum
-use axum::{extract::{Path,State}, http::{HeaderMap, HeaderValue}, response::IntoResponse, routing::get, Router};
-use apimanager_service::assets::{static_files::{INDEX_BUNDLE_JS, INDEX_BUNDLE_JS_MAP, INDEX_HTML}, STATIC_FILEMAP_MIME};
-use apimanager_service::assets::STATIC_FILEMAP;
-use reqwest::{header, StatusCode};
+use axum::{extract::{Path,State}, routing::get, Router};
+
+use apimanager_service::static_routes::static_routes;
 
 #[derive(Clone)]
 struct Appstate {
@@ -40,39 +39,12 @@ async fn get_servname_handler(State(state): State<Appstate>, Path(name): Path<St
     services
 }
 
-fn static_routes() -> Router {
-    let prefix = "/";
-    let mut static_pages = Router::new();
-    for (k, v) in STATIC_FILEMAP.entries() {
-        let mime = STATIC_FILEMAP_MIME.get(k).unwrap_or(&"application/octet-stream");
-        let k = format!("{}{}", prefix, k);
-        if k == format!("{}index.html", prefix) {
-            let k = format!("{}", prefix);
-            let v2 = v.to_string();
-            static_pages = static_pages.clone().route(&k,
-                get(move || async move {
-                let mut headers = HeaderMap::new();
-                headers.insert(header::CONTENT_TYPE, HeaderValue::from_static("text/html"));
-                (headers, v2.clone()).into_response()
-            }));
-        }
-        static_pages = static_pages.clone().route(&k,
-            get(move || async move {
-            let mut headers = HeaderMap::new();
-            headers.insert(header::CONTENT_TYPE, HeaderValue::from_static(*mime));
-            (headers, *v).into_response()
-        }));
-    }
-    static_pages = static_pages.fallback(fallback);
-    static_pages
-} 
-
 #[tokio::main]
 async fn main() {
     let _ = dotenv::dotenv();
-    let service_manager_service = env::var("SERVICE_MANAGER_SERVICE").expect("SERVICE_MANAGER_SERVICE must be set");
     let static_pages = static_routes();
- 
+    
+    let service_manager_service = env::var("SERVICE_MANAGER_SERVICE").expect("SERVICE_MANAGER_SERVICE must be set");
     let state = Appstate {
         service_manager_service,
     };
@@ -93,10 +65,5 @@ async fn main() {
     let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
     println!("listening on {}", listener.local_addr().unwrap());
     axum::serve(listener, app).await.unwrap();
-    println!("{:?}", INDEX_HTML);
     println!("Hello, world!");
-}
-
-async fn fallback() -> (StatusCode, String) {
-    (StatusCode::NOT_FOUND, format!("Cannot find "))
 }
